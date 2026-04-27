@@ -1,5 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import Icon from "@/components/ui/icon";
+
+// История показанных анекдотов: ключ — имя (lowercase), значение — список анекдотов
+const shownJokes: Record<string, string[]> = {};
 
 const SHAPES = [
   { type: "circle", color: "#FF6B6B", size: 120, top: "5%", left: "3%", anim: "animate-float" },
@@ -57,7 +60,7 @@ export default function Index() {
   const [hasJoke, setHasJoke] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const generateJoke = async () => {
+  const generateJoke = useCallback(async () => {
     const trimmed = name.trim();
     if (!trimmed) {
       inputRef.current?.focus();
@@ -65,14 +68,32 @@ export default function Index() {
     }
     setLoading(true);
     setHasJoke(false);
+
+    const key = trimmed.toLowerCase();
+    const seen = shownJokes[key] ?? [];
+
     try {
-      const res = await fetch("https://functions.poehali.dev/31a85a86-eac0-4b53-829d-ebae165d9655", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
-      });
-      const data = await res.json();
-      setJoke(data.joke || "Что-то пошло не так... как и всё в жизни 💀");
+      let newJoke = "";
+      let attempts = 0;
+
+      // Пробуем до 3 раз получить непоказанный анекдот
+      while (attempts < 3) {
+        const res = await fetch("https://functions.poehali.dev/31a85a86-eac0-4b53-829d-ebae165d9655", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: trimmed, seen }),
+        });
+        const data = await res.json();
+        newJoke = data.joke || "Что-то пошло не так... как и всё в жизни 💀";
+
+        if (!seen.includes(newJoke)) break;
+        attempts++;
+      }
+
+      // Сохраняем в историю (последние 40)
+      shownJokes[key] = [...seen, newJoke].slice(-40);
+
+      setJoke(newJoke);
       setJokeKey(k => k + 1);
       setHasJoke(true);
     } catch {
@@ -82,7 +103,7 @@ export default function Index() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [name]);
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") generateJoke();
