@@ -1,0 +1,29 @@
+{
+  "tests": [
+    {
+      "name": "Generate joke for name",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": "Вася"},
+      "expectedStatus": 200,
+      "expectedBody": {"joke": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Generate joke for empty name",
+      "method": "POST",
+      "path": "/",
+      "body": {"name": ""},
+      "expectedStatus": 200,
+      "expectedBody": {"joke": "string"},
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "CORS preflight",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
